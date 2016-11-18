@@ -10,6 +10,7 @@ public class Q{
              //after reading in the file create the objects
             Agent a = processFile(f);
             a.map().printMap();
+            /*
             Scanner derp = new Scanner(System.in);
             //evaluate all states and all the state action sets
             for(int i = 0; i < 7; i++){
@@ -22,8 +23,9 @@ public class Q{
                     }
                 }
             }
+            */
             //Now I need to implement agent movement
-            
+            a.run();
             
         } catch (FileNotFoundException e){
             System.out.println("The file does not exists");
@@ -89,12 +91,14 @@ public class Q{
             Troll newTroll = new Troll(temp);
             trollLoc.add( newTroll);
         }
-        //sanity check print out
-        for(Pony p : ponyLoc){
-            System.out.println(p.location);
+        
+        //prepare the escape
+        for(Obstacle o : obstacleLoc){
+            System.out.print(o.location+" | ");
         }
+
         //return a new worldmap
-        WorldMap m =  new WorldMap(trollLoc, ponyLoc, obstacleLoc, n);
+        WorldMap m =  new WorldMap(trollLoc, ponyLoc, obstacleLoc, n, escapeLoc);
         
         return new Agent(m);
     }
@@ -170,14 +174,16 @@ class WorldMap{
     private ArrayList<Pony> ponies;
     private ArrayList<Obstacle> obstacles;
     private int size;
+    private MyPoint escape;
     private State[][] map;
     
-    public WorldMap(ArrayList<Troll> t, ArrayList<Pony> p, ArrayList<Obstacle> a, int s){
+    public WorldMap(ArrayList<Troll> t, ArrayList<Pony> p, ArrayList<Obstacle> a, int s, MyPoint esc){
         trolls = t;
         ponies = p;
         obstacles = a;
         size = s;
         map = new State[size][size];
+        escape = esc;
         initMap();
     }
     
@@ -185,6 +191,21 @@ class WorldMap{
         Random rand = new Random();
         int x = rand.nextInt(size);
         int y = rand.nextInt(size);
+        boolean run = false;
+        for(Obstacle o : obstacles){
+            if(o.location.equals(new MyPoint(x, y)))
+                run = true;
+        }
+        while(run){
+            x = rand.nextInt(size);
+            y = rand.nextInt(size);
+            run = false;
+            for(Obstacle o : obstacles){
+                if(o.location.equals(new MyPoint(x, y)))
+                    run = true;
+            }
+        }
+            
         return map[x][y];
     }
     
@@ -243,9 +264,9 @@ class WorldMap{
                     //check if the x,y pair goes to an obstacle
                     for(Obstacle it : obstacles){
                         //if we find an obstacle at the point
-                        System.out.print(it.location);
+
                         if(it.equals(new Obstacle(op))){
-                            System.out.print(" INSIDE1 ");
+
                             b = false;
                         }
                     }
@@ -254,7 +275,7 @@ class WorldMap{
                         
                         n = new Action(map[i][j+1]);
                     } else {
-                        System.out.println(" INSIDE2 ");
+
                         n = new Action(map[i][j]);
                     }
                 }
@@ -418,11 +439,35 @@ class WorldMap{
     }
     
     public State getState(Action a){
-        return action.result;
+        return a.result;
     }
-    
+
     public double getReward(State s){
+        //find out what we landed on
+        MyPoint loc = s.pointData();
         
+        //check this point against trolls
+        for(int i = 0; i < trolls.size(); i++){
+            
+            if(trolls.get(i).location.equals(loc)){
+                return -15;
+            }
+        }
+        
+        //check this point against ponies
+        for(int i = 0; i < ponies.size(); i++){
+            
+            if(ponies.get(i).location.equals(loc)){
+                //ponies.remove(i);
+                return 10;
+            }
+        }
+        
+        if(escape.equals(loc)){
+            return 15;
+        }
+        
+        return 2;
     }
     
     public State[][] getStateMap(){
@@ -434,16 +479,16 @@ class WorldMap{
             System.out.print("#");
         System.out.println("##");
         for(int i = size - 1; i >= 0; i--){
-        System.out.print("#");
+            System.out.print("#");
             for(int j = 0; j < size; j++){
-                System.out.print(getSymbol(map[i][j]));
-                
+                System.out.print(getSymbol(map[j][i]));
             }
              System.out.println("#");
         }
-        for(int i = size - 1; i >= 0; i--)
+        System.out.print("#");
+        for(int i = 0; i <= size - 1; i++)
             System.out.print("#");
-        System.out.println("##");
+        System.out.println("#");
        
     }
     
@@ -470,6 +515,10 @@ class WorldMap{
                return "P"; 
             }
         }
+        
+        if(escape.equals(position)){
+            return "E";
+        }
         return "-";
     }
     
@@ -489,19 +538,29 @@ class State{
         return actualLocation;
     }
     
+    public String toString(){
+        return actualLocation.toString();
+    }
+    
 }
 
 class Action{
     State result;
     double q;
+    double alpha;
     
     public Action(State r){
         result = r;
-        q = 1 + Math.random();
+        alpha = .1;
+        q = 20;
     }
     
     public String toString(){
         return result.pointData().toString();
+    }
+    
+    public void update(Double d){
+        q = q + alpha * ( d - q );
     }
 }
 
@@ -514,30 +573,82 @@ class Agent {
     public void run(){
         //get start space
         int count = 0;
-        while(count != 10000){
-            oneEpoch(wm.getStart());
+        double highest = 0;
+        while(count != 1000){
+            double t = oneEpoch(wm.getStart());
+            if(t > highest)
+                highest = t;
+                
+            count++;
+            System.out.println(count);
         }
+        System.out.println(highest);
+        
     }
     
-    private void oneEpoch(State start){
+    private double oneEpoch(State start){
+        //System.out.println("we got the start");
+        double sum = 0;
         boolean running = true;
         while(running){
-            //evaluate each actino from the start
+            Action picked = null;
+            double denom = 0;
+            //evaluate each action from the start
+            for(Action a : start.actions){
+                //get the total for each action
+                denom += Math.exp(a.q/10);
+            }
             
             //determine if we explore or if we choose highest q
+            if(Math.random() >= .9){
+                //randomly pick an action
+                double summ = 0;
+                Random r = new Random();
+                double p = r.nextDouble() * denom;
+                boolean notPicked = true;
+                for(Action a : start.actions){
+                    //get the total for each action
+                    summ += Math.exp(a.q/10);
+                    if(summ >= p && notPicked){
+                        picked = a;
+                        notPicked = false;
+                    }
+                }
+            } else {
+                Action highest = null;
+                for(Action a : start.actions){
+                    if(highest == null){
+                        highest = a;
+                        
+                    } else if(a.q > highest.q){
+                        highest = a;
+                    }
+                }
+                picked = highest;
+            }
             
-            //pick an actions
-            
-            //send the action to the map
-            
-            //get back the state
+            //send action to get a new state back to the mothership
+            start = wm.getState(picked);
             
             //receive reward
-            
+            double reward = wm.getReward(start);
+            //update the action taken with the reward value 
+            picked.update(reward);
+            sum+= reward;
             //check if reward is -15 or 15
-            //set running to false if so
+            if(reward == 15){
+                //System.out.println("FOUND THE ESCAPE");
+                running = false;
+            } else if(reward == -15){
+                //System.out.println("KILLED BY DANNY DIVITO");
+                running = false;
+            }
             
+
+
         }
+        //System.out.println(sum);
+        return sum;
     }
     
     private Action move(){
