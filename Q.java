@@ -1,15 +1,40 @@
+/*
+
+   Name: Adam Johnson
+   Course: 421 - AI
+   Assignment: 5 Q learning
+   Due: 11/21/2016
+
+*/
+
 import java.io.*;
 import java.util.*;
 
 public class Q{
-    public static void main(String[] args){
+    public static void main(String[] args)throws InterruptedException{
+    
+        //first delete all the old result files
+        int count = 0;
+        boolean running = true;
+        do{
+            File del = new File("output/results" + count + ".txt");
+            if(del.exists()){
+                del.delete();
+                System.out.println("DDD");
+                
+            } else {
+                running = false;
+                //System.out.println("FFF");
+            }
+            count++;
+        } while (running);
         File f;
         try{
             //take in the data file from args[0]
              f = new File(args[0]);
              //after reading in the file create the objects
             Agent a = processFile(f);
-            a.map().printMap();
+            //a.map().printMap(new MyPoint(0,0));
             /*
             Scanner derp = new Scanner(System.in);
             //evaluate all states and all the state action sets
@@ -92,11 +117,7 @@ public class Q{
             trollLoc.add( newTroll);
         }
         
-        //prepare the escape
-        for(Obstacle o : obstacleLoc){
-            System.out.print(o.location+" | ");
-        }
-
+        
         //return a new worldmap
         WorldMap m =  new WorldMap(trollLoc, ponyLoc, obstacleLoc, n, escapeLoc);
         
@@ -170,6 +191,7 @@ class Obstacle {
 }
 
 class WorldMap{
+    public static int n = 0;
     private ArrayList<Troll> trolls;
     private ArrayList<Pony> ponies;
     private ArrayList<Obstacle> obstacles;
@@ -205,7 +227,7 @@ class WorldMap{
                     run = true;
             }
         }
-            
+        map[x][y].setTaken();
         return map[x][y];
     }
     
@@ -235,7 +257,7 @@ class WorldMap{
                 //if we go out of bounds we self reference action
                 if(i - 1 < 0 || j + 1 >= size){
                      
-                    nw = new Action(map[i][j]);
+                    //nw = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i - 1, j + 1);
@@ -250,14 +272,14 @@ class WorldMap{
                     if(b){
                         nw = new Action(map[i-1][j+1]);
                     } else {
-                        nw = new Action(map[i][j]);
+                        //nw = new Action(map[i][j]);
                     }
                 }
                 
                 //setup north
                 if(j + 1 >= size){
                      
-                    n = new Action(map[i][j]);
+                    //n = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i , j + 1);
@@ -276,14 +298,14 @@ class WorldMap{
                         n = new Action(map[i][j+1]);
                     } else {
 
-                        n = new Action(map[i][j]);
+                        //n = new Action(map[i][j]);
                     }
                 }
                 
                 //setup northeast
                 if(i + 1 >= size || j + 1 >= size){
                      
-                    ne = new Action(map[i][j]);
+                   // ne = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i + 1, j + 1);
@@ -298,14 +320,14 @@ class WorldMap{
                     if(b){
                         ne = new Action(map[i+1][j+1]);
                     } else {
-                        ne = new Action(map[i][j]);
+                       // ne = new Action(map[i][j]);
                     }
                 }
                 
                 //setup east
                 if(i + 1 >= size){
                      
-                    e = new Action(map[i][j]);
+                    //e = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i + 1 , j);
@@ -320,14 +342,14 @@ class WorldMap{
                     if(b){
                         e = new Action(map[i+1][j]);
                     } else {
-                        e = new Action(map[i][j]);
+                        //e = new Action(map[i][j]);
                     }
                 }
                 
                 //setup southeast
                 if(i + 1 >= size || j - 1 < 0){
                      
-                    se = new Action(map[i][j]);
+                    //se = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i + 1, j - 1);
@@ -342,14 +364,14 @@ class WorldMap{
                     if(b){
                         se = new Action(map[i+1][j-1]);
                     } else {
-                        se = new Action(map[i][j]);
+                        //se = new Action(map[i][j]);
                     }
                 }
                 
                 //setup south
                 if(j - 1 < 0){
                      
-                    s = new Action(map[i][j]);
+                    //s = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i , j - 1);
@@ -364,14 +386,14 @@ class WorldMap{
                     if(b){
                         s = new Action(map[i][j-1]);
                     } else {
-                        s = new Action(map[i][j]);
+                        //s = new Action(map[i][j]);
                     }
                 }
                 
                 //setup southwest
                 if(i - 1 < 0 || j -1 < 0){
                      
-                    sw = new Action(map[i][j]);
+                    //sw = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i - 1, j - 1);
@@ -386,14 +408,14 @@ class WorldMap{
                     if(b){
                         sw = new Action(map[i-1][j-1]);
                     } else {
-                        sw = new Action(map[i][j]);
+                        //sw = new Action(map[i][j]);
                     }
                 }
                 
                 //setup west
                 if(i - 1 < 0){
                      
-                    w = new Action(map[i][j]);
+                    //w = new Action(map[i][j]);
                 } else {
                     Boolean b = true;
                     MyPoint op = new MyPoint( i - 1, j );
@@ -408,20 +430,28 @@ class WorldMap{
                     if(b){
                         w = new Action(map[i-1][j]);
                     } else {
-                        w = new Action(map[i][j]);
+                       // w = new Action(map[i][j]);
                     }
                 }
                 
                 //at this point all directions are setup
                 ArrayList<Action> actions = new ArrayList<>();
-                actions.add(nw);
-                actions.add(n);
-                actions.add(ne);
-                actions.add(e);
-                actions.add(se);
-                actions.add(s);
-                actions.add(sw);
-                actions.add(w);
+                if(nw != null)
+                    actions.add(nw);
+                if(n != null)
+                    actions.add(n);
+                if(ne != null)
+                    actions.add(ne);
+                if(e != null)
+                    actions.add(e);
+                if(se != null)
+                    actions.add(se);
+                if(s != null)
+                    actions.add(s);
+                if(sw != null)    
+                    actions.add(sw);
+                if(w != null)
+                    actions.add(w);
                 map[i][j].initActions(actions);
                 
                 //reset the actions;
@@ -436,9 +466,44 @@ class WorldMap{
 
             }
         }
+        
+        resetContains();
+    }
+    
+    public void resetContains(){
+        //set all taken to false
+        for(int i = 0; i < size; i ++){
+            for(int j = 0; j < size; j++){
+                map[j][i].resetTaken();
+            }
+        }
+        //go through each state and flip their contains
+        for(Pony t : ponies){
+            int x = t.location.x;
+            int y = t.location.y;
+            map[x][y].setPony(true);
+        }
+        
+        for(Troll t : trolls){
+            int x = t.location.x;
+            int y = t.location.y;
+            map[x][y].setTroll(true);
+        }
+        
+        for(Obstacle t : obstacles){
+            int x = t.location.x;
+            int y = t.location.y;
+            if(x != -1)
+                map[x][y].setObstacle(true);
+        }
+        
+        //set the escape
+        map[escape.x][escape.y].setEscape(true);
+        
     }
     
     public State getState(Action a){
+        a.result.setTaken();
         return a.result;
     }
 
@@ -447,25 +512,20 @@ class WorldMap{
         MyPoint loc = s.pointData();
         
         //check this point against trolls
-        for(int i = 0; i < trolls.size(); i++){
-            
-            if(trolls.get(i).location.equals(loc)){
-                return -15;
-            }
+        if(s.troll){
+            return -15;
         }
         
         //check this point against ponies
-        for(int i = 0; i < ponies.size(); i++){
-            
-            if(ponies.get(i).location.equals(loc)){
-                //ponies.remove(i);
-                return 10;
-            }
+        if(s.pony){
+            s.setPony(false);
+            return 10;
         }
         
         if(escape.equals(loc)){
             return 15;
         }
+        
         
         return 2;
     }
@@ -474,60 +534,117 @@ class WorldMap{
         return map;
     }
     
-    public void printMap(){
-        for(int i = size - 1; i >= 0; i--)
-            System.out.print("#");
-        System.out.println("##");
-        for(int i = size - 1; i >= 0; i--){
-            System.out.print("#");
-            for(int j = 0; j < size; j++){
-                System.out.print(getSymbol(map[j][i]));
+    public void printMap(MyPoint agent){
+        try{
+            File writeTo = new File("output/results" + n + ".txt");
+            
+            //create the file if it does not exist
+            if(!writeTo.exists()){
+                writeTo.createNewFile();
             }
-             System.out.println("#");
+            
+            //Here true is to append the content to file
+            FileWriter fw = new FileWriter(writeTo,true);
+            
+            //BufferedWriter writer give better performance
+            BufferedWriter bw = new BufferedWriter(fw);
+            for(int i = size - 1; i >= 0; i--)
+            bw.write("#");
+            bw.write("##\n");
+            for(int i = size - 1; i >= 0; i--){
+                bw.write("#");
+                for(int j = 0; j < size; j++){
+                    if(!agent.equals(map[j][i].actualLocation)){
+                        bw.write(getSymbol(map[j][i]));
+                    } else {
+                        bw.write("A");
+                    }
+                }
+                bw.write("#\n");
+            }
+            bw.write("#");
+            for(int i = 0; i <= size - 1; i++)
+                bw.write("#");
+            bw.write("#\n");
+            bw.write("\n");
+            
+            //Closing BufferedWriter Stream
+            bw.close();
+        } catch (FileNotFoundException e){
+            System.exit(1);
+        } catch (IOException e2){
+            System.exit(1);
         }
-        System.out.print("#");
-        for(int i = 0; i <= size - 1; i++)
-            System.out.print("#");
-        System.out.println("#");
+        
        
     }
     
-    private String getSymbol(State s){
-        MyPoint position = s.pointData();
-        //System.out.print(position+" | ");
-        //check if the position is a troll
-        for(Troll t : trolls){
-            //System.out.print((new Troll(position)).location+ " ");
-            //System.out.print(t.location+" " );
-            if(t.equals(new Troll(position))){
-               return "T"; 
-            }
-        }
-        for(Obstacle it : obstacles){
+    
+    public void printEnd(double reward){
+        try{
+            File writeTo = new File("output/results" + n + ".txt");
             
-            if(it.equals(new Obstacle(position))){
-               return "#"; 
+            //create the file if it does not exist
+            if(!writeTo.exists()){
+                writeTo.createNewFile();
+            }
+            
+            //Here true is to append the content to file
+            FileWriter fw = new FileWriter(writeTo,true);
+            
+            //BufferedWriter writer give better performance
+            BufferedWriter bw = new BufferedWriter(fw);
+            //print out the total Reward
+            bw.write("Total reward:" + reward);
+            bw.write("\n Pony rescue ratio: " + (ponies.size() - notRescued() ) + "/" + ponies.size());
+            
+            //Closing BufferedWriter Stream
+            bw.close();
+            n++;
+        } catch (FileNotFoundException e){
+            System.exit(1);
+        } catch (IOException e2){
+            System.exit(1);
+        }
+    }
+    
+    private String getSymbol(State s){
+        return s.symbol;
+    }
+    
+    private int notRescued(){
+        int r = 0;
+        for(int i = 0; i <size; i ++){
+            for(int j = 0; j <size; j ++){
+                if(map[j][i].pony)
+                    r++;
             }
         }
-        for(Pony p : ponies){
-
-            if(p.equals(new Pony(position))){
-               return "P"; 
-            }
-        }
-        
-        if(escape.equals(position)){
-            return "E";
-        }
-        return "-";
+        return r;
     }
     
 }
 class State{
     ArrayList<Action> actions;
     MyPoint actualLocation;
+    String symbol;
+    boolean obstacle;
+    boolean troll;
+    boolean pony;
+    boolean escape;
+    boolean taken;
+    
     public State(MyPoint p){
         actualLocation = p;
+        initialSetup();
+    }
+    
+    private void initialSetup(){
+        symbol = "-";
+        troll = false;
+        pony = false;
+        escape = false;
+        taken = false;
     }
     
     public void initActions(ArrayList<Action> a){
@@ -540,6 +657,74 @@ class State{
     
     public String toString(){
         return actualLocation.toString();
+    }
+    
+    public void setTroll(boolean b){
+        troll = b;
+        setSymbol();
+    }
+    
+    public void setPony(boolean b){
+        pony = b;
+        setSymbol();
+    }
+            
+
+    
+    public void setObstacle(boolean b){
+        obstacle = b;
+        setSymbol();
+    }
+    
+    public void setEscape(boolean b){
+        escape = b;
+        setSymbol();
+    }
+    
+    public void setTaken(){
+        taken = true;
+        setSymbol();
+    }
+    
+    public void resetTaken(){
+        taken = false;
+        setSymbol();
+    }
+    
+    
+    private void setSymbol(){
+        //always want obstacle to be set first
+        if(obstacle){
+            symbol = "#";
+            return;
+        }
+        
+        //then we want troll on top no matter what
+        if(troll){
+            symbol = "T";
+            return;
+        }
+        
+        //then pony
+        if(pony){
+            symbol = "P";
+            return;
+        }
+        
+        //then taken
+        if(taken){
+            symbol = "X";
+            return;
+        }
+        
+        //then escape
+        if(escape){
+            symbol = "E";
+            return;
+        }
+        
+        //if nothing is here
+        symbol = "-";
     }
     
 }
@@ -570,23 +755,38 @@ class Agent {
     public Agent(WorldMap a){
         wm = a;
     }
-    public void run(){
+    public void run() throws InterruptedException{
         //get start space
         int count = 0;
         double highest = 0;
-        while(count != 1000){
-            double t = oneEpoch(wm.getStart());
+        while(count != 100){
+            //move(wm.getStart());
+            State start = wm.getStart();
+            double t = 0;           
+            if(!start.troll)
+                t = oneEpoch(start);
+            else{
+                wm.printMap(start.actualLocation);
+                t = -15;
+            }
             if(t > highest)
                 highest = t;
                 
             count++;
-            System.out.println(count);
+            wm.printEnd(t);
+            wm.resetContains();
+            
+            
         }
         System.out.println(highest);
         
     }
+  
     
-    private double oneEpoch(State start){
+    private double oneEpoch(State start) throws InterruptedException{
+        //print the map before hand
+        wm.printMap(start.actualLocation);
+        //Thread.sleep(1000);
         //System.out.println("we got the start");
         double sum = 0;
         boolean running = true;
@@ -643,17 +843,17 @@ class Agent {
                 //System.out.println("KILLED BY DANNY DIVITO");
                 running = false;
             }
+            //print out the map at the new start
             
+            //Thread.sleep(1000);
 
 
         }
         //System.out.println(sum);
+        wm.printMap(start.actualLocation);;
         return sum;
     }
     
-    private Action move(){
-        return null;
-    }
     
     //making this for now
     public boolean Equals(Object other){
@@ -662,6 +862,49 @@ class Agent {
     
     public WorldMap map(){
         return wm;
+    }
+    
+    //testing functions 
+      
+    private void move(State start){
+        //print the map
+        wm.printMap(start.actualLocation);
+        boolean running = true;
+        Scanner sc = new Scanner(System.in);
+        int d;
+        while(running){
+            System.out.println("To move NW type 0");
+            System.out.println("To move N type 1");
+            System.out.println("To move NE type 2");
+            System.out.println("To move E type 3");
+            System.out.println("To move SE type 4");
+            System.out.println("To move S type 5");
+            System.out.println("To move SW type 6");
+            System.out.println("To move W type 7");
+            //we have a list of actions from the start state
+            //get the required action
+            do{
+                System.out.print("Choose your move : ");
+                while(!sc.hasNextInt()){
+                    System.out.print("Enter an Int between 0-7 : ");
+                    sc.next();
+                }
+                d = sc.nextInt();
+            } while(d < 0 || d > 7);
+            System.out.println("Move accepted!");
+            Action picked = start.actions.get(d);
+            
+            //grab the move we made
+            start = wm.getState(picked);
+                
+            //receive reward
+            double reward = wm.getReward(start);
+            //The reward for moving here was 
+            System.out.println("The reward for you move was: " + reward);
+            wm.printMap(start.actualLocation);
+            
+        }
+
     }
 }
 
