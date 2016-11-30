@@ -20,7 +20,7 @@ public class Q{
             File del = new File("output/results" + count + ".txt");
             if(del.exists()){
                 del.delete();
-                System.out.println("DDD");
+                //System.out.println("Deleted : " + del.getName());
                 
             } else {
                 running = false;
@@ -35,21 +35,11 @@ public class Q{
              //after reading in the file create the objects
             Agent a = processFile(f);
             //a.map().printMap(new MyPoint(0,0));
-            /*
-            Scanner derp = new Scanner(System.in);
-            //evaluate all states and all the state action sets
-            for(int i = 0; i < 7; i++){
-                for(int j = 0; j < 7; j++){
-                    State s = a.map().getStateMap()[i][j];
-                    //print out all actions 
-                    for(int k = 0; k < s.actions.size(); k++){
-                        System.out.println(k + " action leads from " + i + "," + j + " to " + s.actions.get(k));
-                        String ssdfasdfasdf = derp.nextLine();
-                    }
-                }
-            }
-            */
-            //Now I need to implement agent movement
+          
+            //Movement is implemented in this run function
+            //The run function handles movement as well as a set number of 
+            //epochs currently the only way to change epochs is by changing the
+            //hard coded number
             a.run();
             
         } catch (FileNotFoundException e){
@@ -116,12 +106,41 @@ public class Q{
             Troll newTroll = new Troll(temp);
             trollLoc.add( newTroll);
         }
+        //gather the input parameters
+        fc = new Scanner(System.in);
+        
         
         
         //return a new worldmap
-        WorldMap m =  new WorldMap(trollLoc, ponyLoc, obstacleLoc, n, escapeLoc);
+        WorldMap m =  new WorldMap(trollLoc, ponyLoc, obstacleLoc, n, escapeLoc,
+        getAlpha(fc), getGamma(fc), getQ(fc));
         
         return new Agent(m);
+    }
+    
+    private static double getAlpha(Scanner sc){
+        System.out.print("Enter alpha: ");
+        while(!sc.hasNextDouble()){
+            System.out.print("Enter alpha: ");
+            sc.next();
+        }
+        return sc.nextDouble();
+    }
+    private static double getGamma(Scanner sc){
+        System.out.print("Enter gamma: ");
+        while(!sc.hasNextDouble()){
+            System.out.print("Enter gamma: ");
+            sc.next();
+        }
+        return sc.nextDouble();
+    }
+    private static double getQ(Scanner sc){
+        System.out.print("Enter q: ");
+        while(!sc.hasNextDouble()){
+            System.out.print("Enter q: ");
+            sc.next();
+        }
+        return sc.nextDouble();
     }
     
 }
@@ -198,14 +217,20 @@ class WorldMap{
     private int size;
     private MyPoint escape;
     private State[][] map;
+    private double alpha;
+    private double gamma;
+    private double q;
     
-    public WorldMap(ArrayList<Troll> t, ArrayList<Pony> p, ArrayList<Obstacle> a, int s, MyPoint esc){
+    public WorldMap(ArrayList<Troll> t, ArrayList<Pony> p, ArrayList<Obstacle> a, int s, MyPoint esc ,double al, double g, double q){
         trolls = t;
         ponies = p;
         obstacles = a;
         size = s;
         map = new State[size][size];
         escape = esc;
+        alpha = al;
+        gamma = g; 
+        this.q = q;
         initMap();
     }
     
@@ -270,7 +295,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        nw = new Action(map[i-1][j+1]);
+                        nw = new Action(map[i-1][j+1], alpha, gamma, q);
                     } else {
                         //nw = new Action(map[i][j]);
                     }
@@ -295,7 +320,7 @@ class WorldMap{
                     
                     if(b){
                         
-                        n = new Action(map[i][j+1]);
+                        n = new Action(map[i][j+1], alpha, gamma, q);
                     } else {
 
                         //n = new Action(map[i][j]);
@@ -318,7 +343,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        ne = new Action(map[i+1][j+1]);
+                        ne = new Action(map[i+1][j+1], alpha, gamma, q);
                     } else {
                        // ne = new Action(map[i][j]);
                     }
@@ -340,7 +365,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        e = new Action(map[i+1][j]);
+                        e = new Action(map[i+1][j], alpha, gamma, q);
                     } else {
                         //e = new Action(map[i][j]);
                     }
@@ -362,7 +387,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        se = new Action(map[i+1][j-1]);
+                        se = new Action(map[i+1][j-1], alpha, gamma, q);
                     } else {
                         //se = new Action(map[i][j]);
                     }
@@ -384,7 +409,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        s = new Action(map[i][j-1]);
+                        s = new Action(map[i][j-1], alpha, gamma, q);
                     } else {
                         //s = new Action(map[i][j]);
                     }
@@ -406,7 +431,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        sw = new Action(map[i-1][j-1]);
+                        sw = new Action(map[i-1][j-1], alpha, gamma, q);
                     } else {
                         //sw = new Action(map[i][j]);
                     }
@@ -428,7 +453,7 @@ class WorldMap{
                         }
                     }
                     if(b){
-                        w = new Action(map[i-1][j]);
+                        w = new Action(map[i-1][j], alpha, gamma, q);
                     } else {
                        // w = new Action(map[i][j]);
                     }
@@ -453,6 +478,7 @@ class WorldMap{
                 if(w != null)
                     actions.add(w);
                 map[i][j].initActions(actions);
+                map[i][j].updateR();
                 
                 //reset the actions;
                 nw = null;
@@ -633,6 +659,7 @@ class State{
     boolean pony;
     boolean escape;
     boolean taken;
+    double r;
     
     public State(MyPoint p){
         actualLocation = p;
@@ -668,7 +695,17 @@ class State{
         pony = b;
         setSymbol();
     }
-            
+           
+    public void updateR(){
+        double highest = actions.get(0).q;
+        //go through each of the actions and determine the highest q
+        for(Action a : actions){
+            if(highest < a.q){
+                highest = a.q;
+            }
+        }
+        r = highest;
+    }
 
     
     public void setObstacle(boolean b){
@@ -733,19 +770,26 @@ class Action{
     State result;
     double q;
     double alpha;
+    double gamma;
     
     public Action(State r){
+        this(r, .5, .5, 0);
+    }
+    
+    public Action(State r, double a, double g, double q){
         result = r;
-        alpha = .1;
-        q = 20;
+        alpha = a;
+        gamma = g;
+        q = 0;
     }
     
     public String toString(){
         return result.pointData().toString();
     }
     
+    
     public void update(Double d){
-        q = q + alpha * ( d - q );
+        q = q + alpha * ( d + (gamma * result.r) - q );
     }
 }
 
@@ -757,6 +801,7 @@ class Agent {
     }
     public void run() throws InterruptedException{
         //get start space
+        int run = 0;
         int count = 0;
         double highest = 0;
         while(count != 100){
@@ -769,8 +814,10 @@ class Agent {
                 wm.printMap(start.actualLocation);
                 t = -15;
             }
-            if(t > highest)
+            if(t > highest){
                 highest = t;
+                run = count;
+            }
                 
             count++;
             wm.printEnd(t);
@@ -778,7 +825,9 @@ class Agent {
             
             
         }
-        System.out.println(highest);
+         
+        System.out.println("The highest reward was : " + highest + " from run " +
+                            run);
         
     }
   
@@ -796,7 +845,7 @@ class Agent {
             //evaluate each action from the start
             for(Action a : start.actions){
                 //get the total for each action
-                denom += Math.exp(a.q/10);
+                denom += Math.exp(a.q/10000);
             }
             
             //determine if we explore or if we choose highest q
@@ -808,7 +857,7 @@ class Agent {
                 boolean notPicked = true;
                 for(Action a : start.actions){
                     //get the total for each action
-                    summ += Math.exp(a.q/10);
+                    summ += Math.exp(a.q/10000);
                     if(summ >= p && notPicked){
                         picked = a;
                         notPicked = false;
@@ -827,14 +876,21 @@ class Agent {
                 picked = highest;
             }
             
+            State temp = start;
+            
             //send action to get a new state back to the mothership
             start = wm.getState(picked);
+            
             
             //receive reward
             double reward = wm.getReward(start);
             //update the action taken with the reward value 
             picked.update(reward);
             sum+= reward;
+            
+            //after updating the Q value on the action go back to the previous
+            //state and update the r value
+            temp.updateR();
             //check if reward is -15 or 15
             if(reward == 15){
                 //System.out.println("FOUND THE ESCAPE");
