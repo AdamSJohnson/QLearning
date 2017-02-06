@@ -12,7 +12,7 @@ import java.util.*;
 
 public class Q{
     public static void main(String[] args)throws InterruptedException{
-    
+
         //first delete all the old result files
         int count = 0;
         boolean running = true;
@@ -39,7 +39,7 @@ public class Q{
             //Movement is implemented in this run function
             //The run function handles movement as well as a set number of 
             //epochs currently the only way to change epochs is by changing the
-            //hard coded number
+            //hard coded numberti
             a.run();
             
         } catch (FileNotFoundException e){
@@ -238,12 +238,8 @@ class WorldMap{
         Random rand = new Random();
         int x = rand.nextInt(size);
         int y = rand.nextInt(size);
-        boolean run = false;
-        for(Obstacle o : obstacles){
-            if(o.location.equals(new MyPoint(x, y)))
-                run = true;
-        }
-        while(run){
+        boolean run =true;
+        do{
             x = rand.nextInt(size);
             y = rand.nextInt(size);
             run = false;
@@ -251,7 +247,13 @@ class WorldMap{
                 if(o.location.equals(new MyPoint(x, y)))
                     run = true;
             }
-        }
+            for(Troll o : trolls){
+                if(o.location.equals(new MyPoint(x, y)))
+                    run = true;
+            }
+            if(escape.equals(new MyPoint(x,y)))
+                run = true;
+        } while(run);
         map[x][y].setTaken();
         return map[x][y];
     }
@@ -478,7 +480,6 @@ class WorldMap{
                 if(w != null)
                     actions.add(w);
                 map[i][j].initActions(actions);
-                map[i][j].updateR();
                 
                 //reset the actions;
                 nw = null;
@@ -660,6 +661,7 @@ class State{
     boolean escape;
     boolean taken;
     double r;
+    int visited;
     
     public State(MyPoint p){
         actualLocation = p;
@@ -676,6 +678,9 @@ class State{
     
     public void initActions(ArrayList<Action> a){
         actions = a;
+        visited = -1;
+        updateR();
+        
     }
     
     public MyPoint pointData(){
@@ -705,7 +710,9 @@ class State{
             }
         }
         r = highest;
+        visited++;
     }
+    
 
     
     public void setObstacle(boolean b){
@@ -767,6 +774,7 @@ class State{
 }
 
 class Action{
+    public int z = 0;
     State result;
     double q;
     double alpha;
@@ -789,7 +797,30 @@ class Action{
     
     
     public void update(Double d){
-        q = q + alpha * ( d + (gamma * result.r) - q );
+        double temp = q;
+        q = q + getAlpha() * ( d + (gamma * result.r) - q );
+        
+        if(Math.abs(temp - q) < .000_000_000_000_001){
+            z++;
+            if(z == 1000){
+                System.out.println("Converged");
+            }
+            return;
+            
+        }
+        z = 0;
+
+    }
+    
+    private double getAlpha(){
+        //comment out this line if you want to  use variable learning rate
+        //if(true) return alpha;
+        
+        if (alpha - .01 * result.visited < .01){
+            return .01;
+        }
+        
+        return alpha - .01 * result.visited;
     }
 }
 
@@ -804,27 +835,37 @@ class Agent {
         int run = 0;
         int count = 0;
         double highest = 0;
-        while(count != 100){
-            //move(wm.getStart());
+        while(count != 10000){
+            
             State start = wm.getStart();
             double t = 0;           
-            if(!start.troll)
+            if(!start.troll && !start.escape)
                 t = oneEpoch(start);
             else{
-                wm.printMap(start.actualLocation);
-                t = -15;
+                //wm.printMap(start.actualLocation);
+                if(start.escape){
+                    t = 15;
+                } else {
+                    t = -15;
+                }
             }
-            if(t > highest){
+            if(t == 15){
+                ;
+            } else if(t > highest){
                 highest = t;
                 run = count;
             }
                 
             count++;
-            wm.printEnd(t);
+            //wm.printEnd(t);
             wm.resetContains();
             
             
         }
+        //the agent not follows the learned policy
+        State start = wm.getStart();
+        this.exploit(start);
+        
          
         System.out.println("The highest reward was : " + highest + " from run " +
                             run);
@@ -834,11 +875,13 @@ class Agent {
     
     private double oneEpoch(State start) throws InterruptedException{
         //print the map before hand
-        wm.printMap(start.actualLocation);
+        //wm.printMap(start.actualLocation);
         //Thread.sleep(1000);
         //System.out.println("we got the start");
         double sum = 0;
+        int step = 0;
         boolean running = true;
+
         while(running){
             Action picked = null;
             double denom = 0;
@@ -871,7 +914,11 @@ class Agent {
                         
                     } else if(a.q > highest.q){
                         highest = a;
-                    }
+                    } else if(a.q == highest.q){
+                        if(Math.random() > .5){
+                            highest = a;
+                        }
+                    } 
                 }
                 picked = highest;
             }
@@ -891,6 +938,7 @@ class Agent {
             //after updating the Q value on the action go back to the previous
             //state and update the r value
             temp.updateR();
+            step++;
             //check if reward is -15 or 15
             if(reward == 15){
                 //System.out.println("FOUND THE ESCAPE");
@@ -906,11 +954,83 @@ class Agent {
 
         }
         //System.out.println(sum);
-        wm.printMap(start.actualLocation);;
+        //wm.printMap(start.actualLocation);
         return sum;
     }
     
-    
+///exploit
+    private double exploit(State start) throws InterruptedException{
+        //print the map before hand
+        wm.printMap(start.actualLocation);
+        //Thread.sleep(1000);
+        //System.out.println("we got the start");
+        double sum = 0;
+        int step = 0;
+        boolean running = true;
+        ArrayList<State> visited = new ArrayList<>();
+        while(running){
+            Action picked = null;
+
+            Action highest = null;
+            for(Action a : start.actions){
+            /*
+                if(visited.contains(a.result)){
+                    continue;
+                }
+                */
+                if(highest == null ){
+                    highest = a;
+                    
+                } else if(a.q > highest.q ){
+                    highest = a;
+                } 
+                /*
+                if(a.q == highest.q ){
+                    if(Math.random() > .5){
+                        highest = a;
+                  
+                  }
+                } 
+                */
+            }
+            picked = highest;
+            visited.add(picked.result);
+        
+            
+            State temp = start;
+            //send action to get a new state back to the mothership
+            start = wm.getState(picked);
+            
+            
+            //receive reward
+            double reward = wm.getReward(start);
+            //update the action taken with the reward value 
+            //picked.update(reward);
+            //sum+= reward;
+            
+            //after updating the Q value on the action go back to the previous
+            //state and update the r value
+            //temp.updateR();
+            //step++;
+            //check if reward is -15 or 15
+            if(reward == 15){
+                //System.out.println("FOUND THE ESCAPE");
+                running = false;
+            } else if(reward == -15){
+                //System.out.println("KILLED BY DANNY DIVITO");
+                running = false;
+            }
+            //print out the map at the new start
+            wm.printMap(start.actualLocation);
+            //Thread.sleep(1000);
+
+
+        }
+        //System.out.println(sum);
+        wm.printMap(start.actualLocation);
+        return sum;
+    }
+//exploit
     //making this for now
     public boolean Equals(Object other){
         return false;
